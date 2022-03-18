@@ -57,7 +57,7 @@ func main() {
 			continue
 		}
 
-		newFileName := strconv.Itoa(rand.Int()) + filepath.Ext(fileDescription.Name())
+		newFileName := fileDescription.Name() + " (" + strconv.Itoa(rand.Int()) + ")" + filepath.Ext(fileDescription.Name())
 
 		oldFilePath := filepath.Join(currentDirectory, fileDescription.Name())
 		newFilePath := filepath.Join(currentDirectory, newFileName)

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -21,9 +22,37 @@ func maximumNumberForPadding(n int) int {
 	return result
 }
 
+func readDirectory(currentDirectory string, renameDirectories bool) []fs.FileInfo {
+
+	fileDescriptions0, e := ioutil.ReadDir(currentDirectory)
+	if e != nil {
+		panic("Could not list files in the current directory!")
+	}
+
+	fileDescriptions := make([]fs.FileInfo, 0)
+	for _, fileDescription := range fileDescriptions0 {
+		isDirectory := fileDescription.IsDir()
+		if (renameDirectories && isDirectory) || (!renameDirectories && !isDirectory) {
+			fileDescriptions = append(fileDescriptions, fileDescription)
+		}
+	}
+
+	return fileDescriptions
+}
+
+func paddingCheck(fileDescriptions []fs.FileInfo, padding int) {
+	nFileDescriptions := len(fileDescriptions)
+	if nFileDescriptions > maximumNumberForPadding(padding) {
+		errorMessage := fmt.Sprintf("Number of files or directories in the current directory (= %d) is too big for this padding!\n", nFileDescriptions)
+		panic(errorMessage)
+	}
+}
+
 func main() {
 
 	padding := flag.Int("p", 5, "Padding (number of leading zeros).")
+	renameDirectories := flag.Bool("d", false, "Rename directories instead of files.")
+	directoriesPostfix := flag.String("dp", "_", "Postfix for directories.")
 	flag.Parse()
 
 	if *padding < 1 {
@@ -37,25 +66,12 @@ func main() {
 		return
 	}
 
-	fileDescriptions, e := ioutil.ReadDir(currentDirectory)
-	if e != nil {
-		fmt.Println("Could not list files in the current directory!")
-		return
-	}
-
-	nFileDescriptions := len(fileDescriptions)
-	if nFileDescriptions > maximumNumberForPadding(*padding) {
-		fmt.Printf("Number of files in the current directory (= %d) is too big for this padding!\n", nFileDescriptions)
-		return
-	}
+	fileDescriptions := readDirectory(currentDirectory, *renameDirectories)
+	paddingCheck(fileDescriptions, *padding)
 
 	rand.Seed(time.Now().UnixNano())
 
 	for _, fileDescription := range fileDescriptions {
-
-		if fileDescription.IsDir() {
-			continue
-		}
 
 		newFileName := strconv.Itoa(rand.Int()) + filepath.Ext(fileDescription.Name())
 
@@ -69,33 +85,25 @@ func main() {
 		}
 	}
 
-	fileDescriptions, e = ioutil.ReadDir(currentDirectory)
-	if e != nil {
-		fmt.Println("Could not list files in the current directory!")
-		return
-	}
-
-	nFileDescriptions = len(fileDescriptions)
-	if nFileDescriptions > maximumNumberForPadding(*padding) {
-		fmt.Printf("Number of files in the current directory (= %d) is too big for this padding!\n", nFileDescriptions)
-		return
-	}
+	fileDescriptions = readDirectory(currentDirectory, *renameDirectories)
+	paddingCheck(fileDescriptions, *padding)
 
 	for i, fileDescription := range fileDescriptions {
-
-		if fileDescription.IsDir() {
-			continue
-		}
 
 		template := "%0" + strconv.Itoa(*padding) + "d"
 		index := i + 1
 		newFileName := fmt.Sprintf(template, index) + filepath.Ext(fileDescription.Name())
+
+		if fileDescription.IsDir() {
+			newFileName += *directoriesPostfix
+		}
 
 		oldFilePath := filepath.Join(currentDirectory, fileDescription.Name())
 		newFilePath := filepath.Join(currentDirectory, newFileName)
 
 		e := os.Rename(oldFilePath, newFilePath)
 		if e != nil {
+			fmt.Println(e.Error())
 			fmt.Printf("Could not rename \"%s\" into \"%s\"!\n", oldFilePath, newFilePath)
 			return
 		}

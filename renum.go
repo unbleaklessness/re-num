@@ -71,15 +71,16 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	for _, fileDescription := range fileDescriptions {
+	for index, fileDescription := range fileDescriptions {
 
-		newFileName := strconv.Itoa(rand.Int()) + filepath.Ext(fileDescription.Name())
+		newFileName := strconv.Itoa(index+1) + "_" + strconv.Itoa(rand.Int()) + filepath.Ext(fileDescription.Name())
 
 		oldFilePath := filepath.Join(currentDirectory, fileDescription.Name())
 		newFilePath := filepath.Join(currentDirectory, newFileName)
 
 		e := os.Rename(oldFilePath, newFilePath)
 		if e != nil {
+			fmt.Println(e.Error())
 			fmt.Printf("Could not rename \"%s\" into \"%s\"!\n", oldFilePath, newFilePath)
 			return
 		}
